@@ -28,7 +28,9 @@ No accounts, no server, no network calls except the Google Fonts stylesheet.
 
 ## Covers
 
-79 of the 117 books have their real jacket in `covers/`, matched on Open Library by title *and* author (a wrong cover being worse than none), resized to 400px wide and committed to the repo so the site stays self-contained — no hotlinking, nothing to go stale.
+83 of the 117 books have their real jacket in `covers/`, resized to 400px wide and committed to the repo so the site stays self-contained — no hotlinking, nothing to go stale.
+
+79 came from Open Library, matched by title *and* author (a wrong cover being worse than none). Open Library carries no Sinhala fiction at all, so the four `lk-*.jpg` covers came from the author's listing at kbooks.lk, which also settled what those books are actually called.
 
 Each of those books also takes its **spine colour from its own jacket**: the artwork is reduced to 8×8, the most frequent chromatic bucket wins, and that colour is nudged into a lightness band where white spine lettering stays readable. So the Spines view is close to the real shelf.
 
