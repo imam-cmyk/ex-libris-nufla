@@ -941,8 +941,9 @@ var COVER_DIR = "covers/";
 /* Bump whenever SEED gains facts an already-saved library should inherit.
    1 = first catalogue · 2 = jackets, spine colours, years, page counts
    3 = spines identified against the Open Library catalogue
-   4 = Sinhala titles and covers from the Sri Lankan bookshop listing */
-var SEED_VERSION = 4;
+   4 = Sinhala titles and covers from the Sri Lankan bookshop listing
+   5 = re-run of 4, which skipped fields that read back as undefined */
+var SEED_VERSION = 5;
 
 /* ============================================================
    2. State
@@ -1041,6 +1042,13 @@ function migrateSeed(books){
 /* Corrections to facts I got wrong the first time. Applied only where the
    saved value is still the wrong one, so anything she has since edited or
    confirmed herself is never overwritten. */
+/* Empty values are left out when a library is saved, so a field that was ""
+   reads back as undefined. Treat every flavour of "nothing" as the same. */
+function stillWas(current, was){
+  var blank = function(v){ return v === undefined || v === null || v === "" || v === 0; };
+  return blank(was) ? blank(current) : current === was;
+}
+
 function applyFixes(books){
   var byId = {};
   books.forEach(function(b){ byId[b.id] = b; });
@@ -1049,10 +1057,10 @@ function applyFixes(books){
     var b = byId[f[0]], field = f[1], was = f[2], now = f[3];
     if(!b) return;
     if(field === "tags"){
-      if((b.tags || []).join("|") !== was) return;
+      if(!stillWas((b.tags || []).join("|"), was)) return;
       b.tags = now ? now.split("|") : [];
     } else {
-      if(b[field] !== was) return;
+      if(!stillWas(b[field], was)) return;
       b[field] = now;
     }
     touched++;
