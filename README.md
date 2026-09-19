@@ -28,13 +28,17 @@ No accounts, no server, no network calls except the Google Fonts stylesheet.
 
 ## Covers
 
-83 of the 117 books have their real jacket in `covers/`, resized to 400px wide and committed to the repo so the site stays self-contained — no hotlinking, nothing to go stale.
+100 of the 117 books have their real jacket in `covers/`, resized to 400px wide and committed to the repo so the site stays self-contained — no hotlinking, nothing to go stale.
 
-79 came from Open Library, matched by title *and* author (a wrong cover being worse than none). Open Library carries no Sinhala fiction at all, so the four `lk-*.jpg` covers came from the author's listing at kbooks.lk, which also settled what those books are actually called.
+They came from three places, because no single catalogue has them all:
 
-Each of those books also takes its **spine colour from its own jacket**: the artwork is reduced to 8×8, the most frequent chromatic bucket wins, and that colour is nudged into a lightness band where white spine lettering stays readable. So the Spines view is close to the real shelf.
+- **Open Library** for most of the English books, matched on title *and* author. Its Nancy Drew records are filed under Leslie McFarlane rather than Carolyn Keene, so those are matched on title alone, with omnibus editions rejected — their jacket shows the wrong book.
+- **kbooks.lk and grantha.lk** for the Sinhala books, which Open Library does not carry at all. The shop listings also settled what several of them are actually called.
+- **Image search** for three stragglers no catalogue had.
 
-The remaining 38 — every Sinhala title, the unreadable spines, and a dozen Nancy Drew and Blyton editions Open Library could not confirm — fall back to a drawn cover in their genre colour. The page always builds the drawn cover first and fades a real jacket in over it, so a missing or slow image is never an empty rectangle.
+Each of those books takes its **spine colour from its own jacket**: the artwork is reduced to 8×8, the most frequent chromatic bucket wins, and that colour is nudged into a lightness band where white spine lettering stays readable. So the Spines view is close to the real shelf.
+
+The remaining 17 are books no source could confirm, plus the spines that were simply unreadable in the photographs. They fall back to a drawn cover in their genre colour. The page always builds the drawn cover first and fades a real jacket in over it, so a missing or slow image is never an empty rectangle.
 
 Cover matching also filled in real publication years and page counts, which is what gives the Spines view its varying widths.
 
