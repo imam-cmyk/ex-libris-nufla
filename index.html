@@ -372,6 +372,7 @@ a{color:var(--accent)}
 
 /* ---------------- layout ---------------- */
 .layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:26px;align-items:start;padding-bottom:70px}
+.layout.no-rail{grid-template-columns:minmax(0,1fr)}
 @media (max-width:980px){ .layout{grid-template-columns:1fr;gap:16px} }
 
 .rail{
@@ -504,6 +505,7 @@ textarea{resize:vertical;min-height:70px;line-height:1.55}
   padding:3px 6px;border-radius:999px;background:rgba(0,0,0,.52);color:#fff;backdrop-filter:blur(4px);
 }
 .bdg.fav{background:rgba(0,0,0,.52);font-size:11px;padding:2px 6px}
+.bdg.warn{background:var(--warn);color:#1a1405}
 .cover-prog{position:absolute;left:0;right:0;bottom:0;z-index:5;height:4px;background:rgba(0,0,0,.35)}
 .cover-prog i{display:block;height:100%;background:#fff;box-shadow:0 0 10px rgba(255,255,255,.7)}
 
@@ -678,13 +680,17 @@ tbody tr:last-child td{border-bottom:none}
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);
   box-shadow:var(--sh-3);width:min(880px,100%);max-height:calc(100vh - 40px);
   overflow-y:auto;position:relative;
-  animation:openBook .42s var(--ease-out) both;
   transform-origin:left center;
 }
+/* no shared element to fly from — the sheet opens like a cover instead */
+.sheet-in{animation:openBook .44s var(--ease-out) both}
 @keyframes openBook{
-  from{opacity:0;transform:perspective(1400px) rotateY(-22deg) translateY(14px) scale(.95)}
+  from{opacity:0;transform:perspective(1400px) rotateY(-18deg) translateY(14px) scale(.95)}
   to{opacity:1;transform:none}
 }
+/* a book flew in: the panel animates itself, the sheet just sits still */
+.sheet-flight,.sheet-static{animation:none}
+.dt-cover{will-change:transform}
 .sheet.narrow{width:min(620px,100%)}
 .sheet-x{position:absolute;top:14px;right:14px;z-index:3;
   width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
@@ -707,6 +713,20 @@ tbody tr:last-child td{border-bottom:none}
 .fact .v{font-size:14px;font-weight:600;margin-top:1px;word-break:break-word}
 .dt-sec{padding:0 26px 26px}
 @media (max-width:620px){ .dt-sec{padding:0 20px 20px} }
+/* a title read off a blurry spine, waiting to be confirmed */
+.flagnote{
+  display:flex;flex-direction:column;gap:9px;margin-bottom:16px;
+  padding:12px 14px;border-radius:var(--r-m);
+  background:color-mix(in srgb, var(--warn) 10%, var(--surface));
+  border:1px solid color-mix(in srgb, var(--warn) 34%, transparent);
+}
+.flagnote-t{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;color:var(--ink-2);line-height:1.45}
+.flagnote-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--warn);flex-shrink:0;margin-top:6px;
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--warn) 22%, transparent);
+}
+.flagnote-a{display:flex;gap:8px;flex-wrap:wrap}
+
 .dt-sec h4{
   font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
   color:var(--ink-3);margin:18px 0 8px;font-weight:500;
@@ -919,8 +939,9 @@ var FIELDS = ["title","author","series","seriesNo","genre","tags","status","rati
 var COVER_DIR = "covers/";
 
 /* Bump whenever SEED gains facts an already-saved library should inherit.
-   1 = first catalogue · 2 = jackets, spine colours, years, page counts */
-var SEED_VERSION = 2;
+   1 = first catalogue · 2 = jackets, spine colours, years, page counts
+   3 = spines identified against the Open Library catalogue */
+var SEED_VERSION = 3;
 
 /* ============================================================
    2. State
@@ -934,6 +955,7 @@ var state = {
   sort: "added-desc",
   filters: { genre:[], status:[], format:[], language:[], shelf:[], tag:[], stars:[], flag:[] },
   selection: {},
+  railOpen: false,
   goal: 24,
   writable: true,
   backend: "local"
@@ -946,7 +968,9 @@ var state = {
 /* Columns: title, author, genre, shelf, series, seriesNo, tags, language.
    This is the starting catalogue; everything after that lives in this
    browser, so export a backup from Library tools now and then. */
-var SEED = [["කඳුපාර","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","","","","Sinhala","","",0,0],["සින්දූර් 1","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","සින්දූර්","1","","Sinhala","","",0,0],["සින්දූර් 2","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","සින්දූර්","2","","Sinhala","","",0,0],["සින්දූර් 3","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","සින්දූර්","3","","Sinhala","","",0,0],["සින්දූර් 4","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","සින්දූර්","4","","Sinhala","","",0,0],["කළුවර ඇයි විජිතයම මගේ 1","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","කළුවර ඇයි විජිතයම මගේ","1","verify","Sinhala","","",0,0],["කළුවර ඇයි විජිතයම මගේ 2","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","කළුවර ඇයි විජිතයම මගේ","2","verify","Sinhala","","",0,0],["චායා 1","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","චායා","1","","Sinhala","","",0,0],["චායා 2","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","චායා","2","","Sinhala","","",0,0],["ඕලු 1","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","1","verify","Sinhala","","",0,0],["ඕලු 2","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","2","verify","Sinhala","","",0,0],["ඕලු 3","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","3","verify","Sinhala","","",0,0],["ඕලු 4","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","4","verify","Sinhala","","",0,0],["ඕලු 5","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","5","verify","Sinhala","","",0,0],["I See God in You — දෙනුවන 1","","sinhala","Sinhala stack","දෙනුවන","1","verify","Sinhala","","",0,0],["I See God in You — දෙනුවන 2","","sinhala","Sinhala stack","දෙනුවන","2","verify","Sinhala","","",0,0],["I See God in You — දෙනුවන (අවසාන)","","sinhala","Sinhala stack","දෙනුවන","3","verify","Sinhala","","",0,0],["Twelve Days of Christmas","Trisha Ashley","romance","Stack — Reilly & Evans","","","","English","11733632","#a46568",2010,441],["Ice Station","Matthew Reilly","crime","Stack — Reilly & Evans","Scarecrow","1","","English","175748","#6589a4",1999,462],["The Horse Whisperer","Nicholas Evans","other","Stack — Reilly & Evans","","","","English","14621022","#6589a4",1995,435],["The Smoke Jumper","Nicholas Evans","other","Stack — Reilly & Evans","","","","English","14621034","#ac8f5d",2001,448],["Triple Trouble","Anne — surname hidden","children","Stack — Reilly & Evans","","","verify","English","","",0,0],["The Italian's Ruthless Marriage Command","Helen Bianchin","romance","Stack — Reilly & Evans","","","","English","6434101","#cb152e",2009,188],["Bride of Diamonds","author to confirm","romance","Stack — Reilly & Evans","","","verify","English","","",0,0],["Jamaica Inn","Daphne du Maurier","other","Stack — Grisham & Andrews","","","","English","8765960","#586697",1936,304],["Seeds of Yesterday","Virginia Andrews","other","Stack — Grisham & Andrews","Dollanganger","4","","English","12855635","#403960",1984,408],["If There Be Thorns","Virginia Andrews","other","Stack — Grisham & Andrews","Dollanganger","3","","English","13153196","#606039",1981,374],["The Brethren","John Grisham","crime","Stack — Grisham & Andrews","","","","English","9322892","#a2a465",2000,443],["The Client","John Grisham","crime","Stack — Grisham & Andrews","","","","English","8443273","#605639",1993,482],["The Chamber","John Grisham","crime","Stack — Grisham & Andrews","","","","English","9255662","#6f302a",1994,598],["The Associate","John Grisham","crime","Stack — Grisham & Andrews","","","","English","6804940","#604d39",2000,425],["The Lord of the Rings: The Return of the King","J.R.R. Tolkien","fantasy","Upright — Brown & Tolkien","The Lord of the Rings","3","","English","14625765","#8b0e14",1954,1193],["The Hobbit","J.R.R. Tolkien","fantasy","Upright — Brown & Tolkien","","","","English","14627509","#6a352f",1937,310],["Heartbeat","Danielle Steel","romance","Upright — Brown & Tolkien","","","","English","4021984","#d61615",1991,404],["Digital Fortress","Dan Brown","crime","Upright — Brown & Tolkien","","","","English","8396115","#8ab555",1998,447],["The Lost Symbol","Dan Brown","crime","Upright — Brown & Tolkien","Robert Langdon","3","","English","8373389","#cbac3e",2009,604],["Deception Point","Dan Brown","crime","Upright — Brown & Tolkien","","","","English","14553479","#8c1815",2001,559],["Origin","Dan Brown","crime","Upright — Brown & Tolkien","Robert Langdon","5","","English","11013590","#143085",2013,632],["The Da Vinci Code","Dan Brown","crime","Upright — Brown & Tolkien","Robert Langdon","2","","English","9255229","#974615",2003,489],["A Game of Thrones","George R.R. Martin","fantasy","Upright — Brown & Tolkien","A Song of Ice and Fire","1","","English","9269962","#a4a065",1996,801],["The Boleyn Inheritance","Philippa Gregory","other","Upright — Brown & Tolkien","","","","English","474834","#c19449",2006,561],["The Girl in the Spider's Web","David Lagercrantz","crime","Upright — Brown & Tolkien","Millennium","4","","English","8918664","#801d19",2015,512],["Protect and Defend","Richard North Patterson","crime","Stack — Picoult","","","verify","English","9868894","#396060",2000,608],["Richard North Patterson — spine 2","Richard North Patterson","crime","Stack — Picoult","","","verify","English","","",0,0],["Richard North Patterson — spine 3","Richard North Patterson","crime","Stack — Picoult","","","verify","English","","",0,0],["Richard North Patterson — spine 4","Richard North Patterson","crime","Stack — Picoult","","","verify","English","","",0,0],["Richard North Patterson — spine 5","Richard North Patterson","crime","Stack — Picoult","","","verify","English","","",0,0],["House Rules","Jodi Picoult","other","Stack — Picoult","","","","English","6305239","#cfa03a",2010,0],["Plain Truth","Jodi Picoult","other","Stack — Picoult","","","","English","408608","#704c29",2000,416],["The Storyteller","Jodi Picoult","other","Stack — Picoult","","","","English","9242716","#34aaba",2013,462],["The President Is Missing","Bill Clinton & James Patterson","crime","Upright — Patterson","","","","English","8234413","#605339",2014,528],["9th Judgement","James Patterson","crime","Upright — Patterson","Women's Murder Club","9","","English","","",0,0],["Honeymoon","James Patterson & Howard Roughan","crime","Upright — Patterson","","","","English","189722","#657ca4",2001,393],["When the Wind Blows","James Patterson","crime","Upright — Patterson","","","","English","1463550","#48416e",1847,416],["Unlucky 13","James Patterson","crime","Upright — Patterson","Women's Murder Club","13","","English","7278594","#604239",2014,416],["Triple Threat","James Patterson","crime","Upright — Patterson","BookShots","","","English","13169717","#342277",2016,384],["Cradle and All","James Patterson","crime","Upright — Patterson","","","","English","","",0,0],["2nd Chance","James Patterson & Andrew Gross","crime","Upright — Patterson","Women's Murder Club","2","","English","189671","#604639",2002,390],["Worst Case","James Patterson","crime","Upright — Patterson","Michael Bennett","3","","English","6305249","#8b0e1e",2008,374],["Step on a Crack","James Patterson","crime","Upright — Patterson","Michael Bennett","1","","English","187654","#aa6715",1658,383],["Fifty Shades of Grey","E. L. James","romance","Upright — Patterson","Fifty Shades","1","verify","English","12648183","#393b60",2000,544],["The Barbed Coil","J.V. Jones","fantasy","Upright — J.V. Jones & Gardner","","","","English","285918","#6b4d2e",1997,624],["A Cavern of Black Ice","J.V. Jones","fantasy","Upright — J.V. Jones & Gardner","Sword of Shadows","1","","English","10738097","#3e3960",1999,810],["Master and Fool","J.V. Jones","fantasy","Upright — J.V. Jones & Gardner","The Book of Words","3","","English","287811","#d88815",1996,532],["Alone","Lisa Gardner","crime","Upright — J.V. Jones & Gardner","Detective D.D. Warren","1","","English","13519820","#366355",2005,0],["Hide","Lisa Gardner","crime","Upright — J.V. Jones & Gardner","Detective D.D. Warren","2","","English","1407404","#a46565",2007,420],["Dear John","Nicholas Sparks","romance","Upright — J.V. Jones & Gardner","","","","English","13781295","#5c9cad",2006,288],["The Last Song","Nicholas Sparks","romance","Upright — J.V. Jones & Gardner","","","","English","6411538","#269789",2009,390],["See Me","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","8862273","#a48f65",2015,0],["A Walk to Remember","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","229771","#604b39",1999,240],["The Wedding","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","287599","#44aac6",2003,263],["Nights in Rodanthe","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","286349","#603a39",2002,222],["The Notebook","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","7382153","#d2cc37",1996,244],["Smile and Say Murder","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","4","","English","15147274","#a47965",1993,151],["White Water Terror","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","6","","English","","",0,0],["Deadly Doubles","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","7","","English","","",0,0],["False Moves","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","9","","English","","",0,0],["Stay Tuned for Danger","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","17","","English","2308662","#e62348",1995,320],["Let's Talk Terror","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","86","","English","","",0,0],["The Mystery of the Brass Bound Trunk","Carolyn Keene","children","Upright — Sparks & Nancy Drew","Nancy Drew","17","","English","","",0,0],["The Clue of the Broken Locket","Carolyn Keene","children","Upright — Sparks & Nancy Drew","Nancy Drew","11","verify","English","","",0,0],["The Haunted Bridge","Carolyn Keene","children","Upright — Sparks & Nancy Drew","Nancy Drew","15","","English","","",0,0],["Allegiant","Veronica Roth","ya","Upright — Sparks & Nancy Drew","Divergent","3","","English","7276393","#a34625",2011,516],["Four: A Divergent Collection","Veronica Roth","ya","Upright — Sparks & Nancy Drew","Divergent","","","English","7314248","#394060",2001,261],["Losing My Virginity: The Autobiography","Richard Branson","nonfic","Upright — Hoover & Blyton","","","","English","1056456","#a72123",1999,608],["Lethal","Sandra Brown","crime","Upright — Hoover & Blyton","","","","English","9701690","#a49f65",2011,474],["It Ends with Us","Colleen Hoover","romance","Upright — Hoover & Blyton","It Ends with Us","1","","English","10473609","#b2577f",2012,384],["It Starts with Us","Colleen Hoover","romance","Upright — Hoover & Blyton","It Ends with Us","2","","English","12749873","#2895a5",2022,352],["Ugly Love","Colleen Hoover","romance","Upright — Hoover & Blyton","","","","English","12856728","#0e628b",2014,344],["Verity","Colleen Hoover","crime","Upright — Hoover & Blyton","","","","English","8747160","#456039",2018,343],["The Wild Boy","Nihal Kumara","children","Upright — Hoover & Blyton","","","verify","English","","",0,0],["Five Go to Billycock Hill","Enid Blyton","children","Upright — Hoover & Blyton","The Famous Five","16","","English","14603667","#8b0e14",1957,185],["The Mystery of the Vanished Prince","Enid Blyton","children","Upright — Hoover & Blyton","The Five Find-Outers","9","","English","14577305","#8b6752",1951,188],["The Gruffalo","Julia Donaldson","children","Upright — Hoover & Blyton","","","","English","8561698","#788b0e",1999,32],["Five on Finniston Farm","Enid Blyton","children","Upright — Hoover & Blyton","The Famous Five","18","","English","14575874","#a59228",1960,188],["Sleepover Girls Go Green","Narinder Dhami","children","Upright — Hoover & Blyton","The Sleepover Club","25","verify","English","","",0,0],["The Magic Faraway Tree Collection","Enid Blyton","children","Upright — Hoover & Blyton","The Faraway Tree","","","English","14605635","#7c8a0f",1943,185],["The Rockingdown / Rilloby Fair / Ragamuffin Mystery","Enid Blyton","children","Upright — Hoover & Blyton","The Barney Mysteries","","","English","14596890","#293770",1949,208],["St Clare's Again","Enid Blyton","children","Upright — Hoover & Blyton","St Clare's","","","English","","",0,0],["Nine Dragons","Michael Connelly","crime","Upright — crime & Christie","Harry Bosch","15","","English","6307114","#496039",2009,377],["Shelter","Harlan Coben","ya","Upright — crime & Christie","Mickey Bolitar","1","","English","11616486","#818316",2011,317],["Play Dead","Harlan Coben","crime","Upright — crime & Christie","","","","English","7021014","#344165",1990,539],["Tell No One","Harlan Coben","crime","Upright — crime & Christie","","","","English","984333","#603941",2000,353],["Dying to Sin","Stephen Booth","crime","Upright — crime & Christie","Cooper & Fry","8","","English","10322719","#2f326a",2008,542],["A Bone of Contention","Susanna Gregory","mystery","Upright — crime & Christie","Matthew Bartholomew","3","verify","English","174470","#65a48f",1997,375],["Swan Music","Sarah Harrison","other","Upright — crime & Christie","","","verify","English","2401838","#658ca4",2005,512],["They Do It with Mirrors","Agatha Christie","mystery","Upright — crime & Christie","Miss Marple","6","","English","10249524","#a2a465",1952,207],["The Complete Short Stories: Detectives and Young Adventurers","Agatha Christie","mystery","Upright — crime & Christie","","","","English","6540112","#168896",1985,368],["Murder in Mesopotamia","Agatha Christie","mystery","Upright — crime & Christie","Hercule Poirot","14","","English","12855104","#76232d",1936,248],["Miss Marple's Final Cases","Agatha Christie","mystery","Upright — crime & Christie","Miss Marple","","","English","10252108","#396050",2002,224],["A Good Girl's Guide to Murder","Holly Jackson","ya","Upright — crime & Christie","A Good Girl's Guide to Murder","1","","English","13156188","#6598a4",2019,431],["Confess","Colleen Hoover","romance","Upright — crime & Christie","","","","English","14418402","#8565a4",2015,320],["Diane Chamberlain — spine partly covered","Diane Chamberlain","other","Upright — crime & Christie","","","verify","English","","",0,0],["Real Food for Mother and Baby","Nina Planck","nonfic","Upright — crime & Christie","","","","English","10281103","#936954",2009,0],["The Adventure of English","Melvyn Bragg","nonfic","Upright — crime & Christie","","","","English","7449966","#605239",2003,322],["Karl Marx","author to confirm","nonfic","Upright — crime & Christie","","","verify","English","","",0,0],["We Create Our Own Histories","author to confirm","nonfic","Upright — crime & Christie","","","verify","English","","",0,0]];
+var SEED = [["කඳුපාර","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","","","","Sinhala","","",0,0],["සින්දූර් 1","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","සින්දූර්","1","","Sinhala","","",0,0],["සින්දූර් 2","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","සින්දූර්","2","","Sinhala","","",0,0],["සින්දූර් 3","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","සින්දූර්","3","","Sinhala","","",0,0],["සින්දූර් 4","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","සින්දූර්","4","","Sinhala","","",0,0],["කළුවර ඇයි විජිතයම මගේ 1","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","කළුවර ඇයි විජිතයම මගේ","1","verify","Sinhala","","",0,0],["කළුවර ඇයි විජිතයම මගේ 2","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","කළුවර ඇයි විජිතයම මගේ","2","verify","Sinhala","","",0,0],["චායා 1","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","චායා","1","","Sinhala","","",0,0],["චායා 2","සුජීව ප්‍රසන්න ආරච්චි","sinhala","Sinhala stack","චායා","2","","Sinhala","","",0,0],["ඕලු 1","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","1","verify","Sinhala","","",0,0],["ඕලු 2","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","2","verify","Sinhala","","",0,0],["ඕලු 3","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","3","verify","Sinhala","","",0,0],["ඕලු 4","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","4","verify","Sinhala","","",0,0],["ඕලු 5","කුමාර කරුණාරත්න","sinhala","Sinhala stack","ඕලු","5","verify","Sinhala","","",0,0],["I See God in You — දෙනුවන 1","","sinhala","Sinhala stack","දෙනුවන","1","verify","Sinhala","","",0,0],["I See God in You — දෙනුවන 2","","sinhala","Sinhala stack","දෙනුවන","2","verify","Sinhala","","",0,0],["I See God in You — දෙනුවන (අවසාන)","","sinhala","Sinhala stack","දෙනුවන","3","verify","Sinhala","","",0,0],["Twelve Days of Christmas","Trisha Ashley","romance","Stack — Reilly & Evans","","","","English","11733632","#a46568",2010,441],["Ice Station","Matthew Reilly","crime","Stack — Reilly & Evans","Scarecrow","1","","English","175748","#6589a4",1999,462],["The Horse Whisperer","Nicholas Evans","other","Stack — Reilly & Evans","","","","English","14621022","#6589a4",1995,435],["The Smoke Jumper","Nicholas Evans","other","Stack — Reilly & Evans","","","","English","14621034","#ac8f5d",2001,448],["Triple Trouble","Anne — surname hidden","children","Stack — Reilly & Evans","","","verify","English","","",0,0],["The Italian's Ruthless Marriage Command","Helen Bianchin","romance","Stack — Reilly & Evans","","","","English","6434101","#cb152e",2009,188],["Bride of Diamonds","Emma Darcy","romance","Stack — Reilly & Evans","","","","English","","",1990,0],["Jamaica Inn","Daphne du Maurier","other","Stack — Grisham & Andrews","","","","English","8765960","#586697",1936,304],["Seeds of Yesterday","Virginia Andrews","other","Stack — Grisham & Andrews","Dollanganger","4","","English","12855635","#403960",1984,408],["If There Be Thorns","Virginia Andrews","other","Stack — Grisham & Andrews","Dollanganger","3","","English","13153196","#606039",1981,374],["The Brethren","John Grisham","crime","Stack — Grisham & Andrews","","","","English","9322892","#a2a465",2000,443],["The Client","John Grisham","crime","Stack — Grisham & Andrews","","","","English","8443273","#605639",1993,482],["The Chamber","John Grisham","crime","Stack — Grisham & Andrews","","","","English","9255662","#6f302a",1994,598],["The Associate","John Grisham","crime","Stack — Grisham & Andrews","","","","English","6804940","#604d39",2000,425],["The Lord of the Rings: The Return of the King","J.R.R. Tolkien","fantasy","Upright — Brown & Tolkien","The Lord of the Rings","3","","English","14625765","#8b0e14",1954,1193],["The Hobbit","J.R.R. Tolkien","fantasy","Upright — Brown & Tolkien","","","","English","14627509","#6a352f",1937,310],["Heartbeat","Danielle Steel","romance","Upright — Brown & Tolkien","","","","English","4021984","#d61615",1991,404],["Digital Fortress","Dan Brown","crime","Upright — Brown & Tolkien","","","","English","8396115","#8ab555",1998,447],["The Lost Symbol","Dan Brown","crime","Upright — Brown & Tolkien","Robert Langdon","3","","English","8373389","#cbac3e",2009,604],["Deception Point","Dan Brown","crime","Upright — Brown & Tolkien","","","","English","14553479","#8c1815",2001,559],["Origin","Dan Brown","crime","Upright — Brown & Tolkien","Robert Langdon","5","","English","11013590","#143085",2013,632],["The Da Vinci Code","Dan Brown","crime","Upright — Brown & Tolkien","Robert Langdon","2","","English","9255229","#974615",2003,489],["A Game of Thrones","George R.R. Martin","fantasy","Upright — Brown & Tolkien","A Song of Ice and Fire","1","","English","9269962","#a4a065",1996,801],["The Boleyn Inheritance","Philippa Gregory","other","Upright — Brown & Tolkien","","","","English","474834","#c19449",2006,561],["The Girl in the Spider's Web","David Lagercrantz","crime","Upright — Brown & Tolkien","Millennium","4","","English","8918664","#801d19",2015,512],["Protect and Defend","Richard North Patterson","crime","Stack — Picoult","","","","English","9868894","#396060",2000,608],["Richard North Patterson — spine 2","Richard North Patterson","crime","Stack — Picoult","","","verify","English","","",0,0],["Richard North Patterson — spine 3","Richard North Patterson","crime","Stack — Picoult","","","verify","English","","",0,0],["Richard North Patterson — spine 4","Richard North Patterson","crime","Stack — Picoult","","","verify","English","","",0,0],["Richard North Patterson — spine 5","Richard North Patterson","crime","Stack — Picoult","","","verify","English","","",0,0],["House Rules","Jodi Picoult","other","Stack — Picoult","","","","English","6305239","#cfa03a",2010,0],["Plain Truth","Jodi Picoult","other","Stack — Picoult","","","","English","408608","#704c29",2000,416],["The Storyteller","Jodi Picoult","other","Stack — Picoult","","","","English","9242716","#34aaba",2013,462],["The President Is Missing","Bill Clinton & James Patterson","crime","Upright — Patterson","","","","English","8234413","#605339",2014,528],["9th Judgement","James Patterson","crime","Upright — Patterson","Women's Murder Club","9","","English","","",0,0],["Honeymoon","James Patterson & Howard Roughan","crime","Upright — Patterson","","","","English","189722","#657ca4",2001,393],["When the Wind Blows","James Patterson","crime","Upright — Patterson","","","","English","1463550","#48416e",1847,416],["Unlucky 13","James Patterson","crime","Upright — Patterson","Women's Murder Club","13","","English","7278594","#604239",2014,416],["Triple Threat","James Patterson","crime","Upright — Patterson","BookShots","","","English","13169717","#342277",2016,384],["Cradle and All","James Patterson","crime","Upright — Patterson","","","","English","","",0,0],["2nd Chance","James Patterson & Andrew Gross","crime","Upright — Patterson","Women's Murder Club","2","","English","189671","#604639",2002,390],["Worst Case","James Patterson","crime","Upright — Patterson","Michael Bennett","3","","English","6305249","#8b0e1e",2008,374],["Step on a Crack","James Patterson","crime","Upright — Patterson","Michael Bennett","1","","English","187654","#aa6715",1658,383],["Fifty Shades of Grey","E. L. James","romance","Upright — Patterson","Fifty Shades","1","verify","English","12648183","#393b60",2000,544],["The Barbed Coil","J.V. Jones","fantasy","Upright — J.V. Jones & Gardner","","","","English","285918","#6b4d2e",1997,624],["A Cavern of Black Ice","J.V. Jones","fantasy","Upright — J.V. Jones & Gardner","Sword of Shadows","1","","English","10738097","#3e3960",1999,810],["Master and Fool","J.V. Jones","fantasy","Upright — J.V. Jones & Gardner","The Book of Words","3","","English","287811","#d88815",1996,532],["Alone","Lisa Gardner","crime","Upright — J.V. Jones & Gardner","Detective D.D. Warren","1","","English","13519820","#366355",2005,0],["Hide","Lisa Gardner","crime","Upright — J.V. Jones & Gardner","Detective D.D. Warren","2","","English","1407404","#a46565",2007,420],["Dear John","Nicholas Sparks","romance","Upright — J.V. Jones & Gardner","","","","English","13781295","#5c9cad",2006,288],["The Last Song","Nicholas Sparks","romance","Upright — J.V. Jones & Gardner","","","","English","6411538","#269789",2009,390],["See Me","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","8862273","#a48f65",2015,0],["A Walk to Remember","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","229771","#604b39",1999,240],["The Wedding","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","287599","#44aac6",2003,263],["Nights in Rodanthe","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","286349","#603a39",2002,222],["The Notebook","Nicholas Sparks","romance","Upright — Sparks & Nancy Drew","","","","English","7382153","#d2cc37",1996,244],["Smile and Say Murder","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","4","","English","15147274","#a47965",1993,151],["White Water Terror","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","6","","English","","",0,0],["Deadly Doubles","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","7","","English","","",0,0],["False Moves","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","9","","English","","",0,0],["Stay Tuned for Danger","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","17","","English","2308662","#e62348",1995,320],["Let's Talk Terror","Carolyn Keene","children","Upright — Sparks & Nancy Drew","The Nancy Drew Files","86","","English","","",0,0],["The Mystery of the Brass Bound Trunk","Carolyn Keene","children","Upright — Sparks & Nancy Drew","Nancy Drew","17","","English","","",0,0],["The Clue of the Broken Locket","Carolyn Keene","children","Upright — Sparks & Nancy Drew","Nancy Drew","11","","English","","",0,0],["The Haunted Bridge","Carolyn Keene","children","Upright — Sparks & Nancy Drew","Nancy Drew","15","","English","","",0,0],["Allegiant","Veronica Roth","ya","Upright — Sparks & Nancy Drew","Divergent","3","","English","7276393","#a34625",2011,516],["Four: A Divergent Collection","Veronica Roth","ya","Upright — Sparks & Nancy Drew","Divergent","","","English","7314248","#394060",2001,261],["Losing My Virginity: The Autobiography","Richard Branson","nonfic","Upright — Hoover & Blyton","","","","English","1056456","#a72123",1999,608],["Lethal","Sandra Brown","crime","Upright — Hoover & Blyton","","","","English","9701690","#a49f65",2011,474],["It Ends with Us","Colleen Hoover","romance","Upright — Hoover & Blyton","It Ends with Us","1","","English","10473609","#b2577f",2012,384],["It Starts with Us","Colleen Hoover","romance","Upright — Hoover & Blyton","It Ends with Us","2","","English","12749873","#2895a5",2022,352],["Ugly Love","Colleen Hoover","romance","Upright — Hoover & Blyton","","","","English","12856728","#0e628b",2014,344],["Verity","Colleen Hoover","crime","Upright — Hoover & Blyton","","","","English","8747160","#456039",2018,343],["The Wild Boy","Nihal Kumara","children","Upright — Hoover & Blyton","","","verify","English","","",0,0],["Five Go to Billycock Hill","Enid Blyton","children","Upright — Hoover & Blyton","The Famous Five","16","","English","14603667","#8b0e14",1957,185],["The Mystery of the Vanished Prince","Enid Blyton","children","Upright — Hoover & Blyton","The Five Find-Outers","9","","English","14577305","#8b6752",1951,188],["The Gruffalo","Julia Donaldson","children","Upright — Hoover & Blyton","","","","English","8561698","#788b0e",1999,32],["Five on Finniston Farm","Enid Blyton","children","Upright — Hoover & Blyton","The Famous Five","18","","English","14575874","#a59228",1960,188],["Sleepover Girls Go Green","Angie Bates","children","Upright — Hoover & Blyton","The Sleepover Club","25","","English","","",2001,0],["The Magic Faraway Tree Collection","Enid Blyton","children","Upright — Hoover & Blyton","The Faraway Tree","","","English","14605635","#7c8a0f",1943,185],["The Rockingdown / Rilloby Fair / Ragamuffin Mystery","Enid Blyton","children","Upright — Hoover & Blyton","The Barney Mysteries","","","English","14596890","#293770",1949,208],["St Clare's Again","Enid Blyton","children","Upright — Hoover & Blyton","St Clare's","","","English","","",0,0],["Nine Dragons","Michael Connelly","crime","Upright — crime & Christie","Harry Bosch","15","","English","6307114","#496039",2009,377],["Shelter","Harlan Coben","ya","Upright — crime & Christie","Mickey Bolitar","1","","English","11616486","#818316",2011,317],["Play Dead","Harlan Coben","crime","Upright — crime & Christie","","","","English","7021014","#344165",1990,539],["Tell No One","Harlan Coben","crime","Upright — crime & Christie","","","","English","984333","#603941",2000,353],["Dying to Sin","Stephen Booth","crime","Upright — crime & Christie","Cooper & Fry","8","","English","10322719","#2f326a",2008,542],["A Bone of Contention","Susanna Gregory","mystery","Upright — crime & Christie","Matthew Bartholomew","3","","English","174470","#65a48f",1997,375],["Swan Music","Sarah Harrison","other","Upright — crime & Christie","","","","English","2401838","#658ca4",2005,512],["They Do It with Mirrors","Agatha Christie","mystery","Upright — crime & Christie","Miss Marple","6","","English","10249524","#a2a465",1952,207],["The Complete Short Stories: Detectives and Young Adventurers","Agatha Christie","mystery","Upright — crime & Christie","","","","English","6540112","#168896",1985,368],["Murder in Mesopotamia","Agatha Christie","mystery","Upright — crime & Christie","Hercule Poirot","14","","English","12855104","#76232d",1936,248],["Miss Marple's Final Cases","Agatha Christie","mystery","Upright — crime & Christie","Miss Marple","","","English","10252108","#396050",2002,224],["A Good Girl's Guide to Murder","Holly Jackson","ya","Upright — crime & Christie","A Good Girl's Guide to Murder","1","","English","13156188","#6598a4",2019,431],["Confess","Colleen Hoover","romance","Upright — crime & Christie","","","","English","14418402","#8565a4",2015,320],["Diane Chamberlain — spine partly covered","Diane Chamberlain","other","Upright — crime & Christie","","","verify","English","","",0,0],["Real Food for Mother and Baby","Nina Planck","nonfic","Upright — crime & Christie","","","","English","10281103","#936954",2009,0],["The Adventure of English","Melvyn Bragg","nonfic","Upright — crime & Christie","","","","English","7449966","#605239",2003,322],["Karl Marx","Francis Wheen","nonfic","Upright — crime & Christie","","","verify","English","","",1999,0],["We Create Our Own Histories","author to confirm","nonfic","Upright — crime & Christie","","","verify","English","","",0,0]];
+
+var FIXES = [["b24","author","author to confirm","Emma Darcy"],["b24","year",0,1990],["b24","tags","verify",""],["b43","tags","verify",""],["b81","tags","verify",""],["b96","author","Narinder Dhami","Angie Bates"],["b96","year",0,2001],["b96","tags","verify",""],["b105","tags","verify",""],["b106","tags","verify",""],["b116","author","author to confirm","Francis Wheen"],["b116","year",0,1999]];
 
 var LS_BOOKS = "spineindex.books.v1";
 var LS_PREFS = "spineindex.prefs.v1";
@@ -1013,6 +1037,28 @@ function migrateSeed(books){
   return touched;
 }
 
+/* Corrections to facts I got wrong the first time. Applied only where the
+   saved value is still the wrong one, so anything she has since edited or
+   confirmed herself is never overwritten. */
+function applyFixes(books){
+  var byId = {};
+  books.forEach(function(b){ byId[b.id] = b; });
+  var touched = 0;
+  FIXES.forEach(function(f){
+    var b = byId[f[0]], field = f[1], was = f[2], now = f[3];
+    if(!b) return;
+    if(field === "tags"){
+      if((b.tags || []).join("|") !== was) return;
+      b.tags = now ? now.split("|") : [];
+    } else {
+      if(b[field] !== was) return;
+      b[field] = now;
+    }
+    touched++;
+  });
+  return touched;
+}
+
 function seedBooks(){
   return SEED.map(function(r, i){
     return normalize({
@@ -1045,7 +1091,10 @@ function bootStorage(){
   var saved = lsGet(LS_BOOKS, null);
   if(saved && saved.length){
     state.books = saved.map(normalize);
-    if(savedVersion < SEED_VERSION && migrateSeed(state.books)) persistLocal();
+    if(savedVersion < SEED_VERSION){
+      var changed = migrateSeed(state.books) + applyFixes(state.books);
+      if(changed) persistLocal();
+    }
   } else {
     state.books = seedBooks();
     persistLocal();
@@ -1118,6 +1167,7 @@ function visibleBooks(){
     if(f.flag.indexOf("lent") >= 0 && !b.lentTo) return false;
     if(f.flag.indexOf("unrated") >= 0 && b.rating) return false;
     if(f.flag.indexOf("series") >= 0 && !b.series) return false;
+    if(f.flag.indexOf("needs") >= 0 && !isFlagged(b)) return false;
     return true;
   });
   return sortBooks(out, state.sort);
@@ -1366,6 +1416,8 @@ function renderRail(){
       })));
 
   host.appendChild(facetGroup("Shortcuts", "flag", [
+    {val:"needs",   label:"Needs checking", color:"var(--warn)",
+      count: state.books.filter(isFlagged).length},
     {val:"fav",     label:"Favourites", count: state.books.filter(function(b){ return b.favorite; }).length},
     {val:"series",  label:"In a series", count: state.books.filter(function(b){ return b.series; }).length},
     {val:"lent",    label:"Lent out",   count: state.books.filter(function(b){ return b.lentTo; }).length},
@@ -1394,7 +1446,8 @@ function renderRail(){
   }
 
   var tags = facet("t", function(b){ return b.tags; });
-  var tagKeys = Object.keys(tags).sort(function(a,b){ return tags[b]-tags[a] || a.localeCompare(b); });
+  var tagKeys = Object.keys(tags).filter(function(t){ return t !== "verify"; })
+    .sort(function(a,b){ return tags[b]-tags[a] || a.localeCompare(b); });
   if(tagKeys.length){
     host.appendChild(facetGroup("Tags","tag", tagKeys.slice(0,26).map(function(k){
       return {val:k, label:k, count:tags[k]};
@@ -1455,7 +1508,7 @@ function renderResbar(){
       if(key === "genre") label = (GMAP[val]||{}).name || val;
       if(key === "status") label = (SMAP[val]||{}).name || val;
       if(key === "stars") label = "★".repeat(Number(val));
-      if(key === "flag") label = {fav:"Favourites",lent:"Lent out",unrated:"Unrated",series:"In a series"}[val] || val;
+      if(key === "flag") label = {needs:"Needs checking",fav:"Favourites",lent:"Lent out",unrated:"Unrated",series:"In a series"}[val] || val;
       af.appendChild(el("span",{class:"afil"},[
         el("span",{text:label}),
         el("button",{"aria-label":"Remove filter "+label,text:"×",onclick:function(){
@@ -1583,6 +1636,7 @@ function bookCard(b, i){
   else if(b.status === "read") badges.appendChild(el("span",{class:"bdg",text:"Read"}));
   else if(b.status === "paused") badges.appendChild(el("span",{class:"bdg",text:"Paused"}));
   if(b.lentTo) badges.appendChild(el("span",{class:"bdg",text:"Lent"}));
+  if(isFlagged(b)) badges.appendChild(el("span",{class:"bdg warn",title:"Read off a blurry spine",text:"Check"}));
 
   var cover = makeCover(b);
   cover.appendChild(badges);
@@ -1601,7 +1655,7 @@ function bookCard(b, i){
 
   var card = el("button",{class:"card"+(selected?" selected":""),
     style:"animation-delay:" + Math.min(i*22, 460) + "ms",
-    onclick:function(){ openDetail(b.id); }},[
+    onclick:function(){ openDetail(b.id, cover); }},[
     cover,
     el("div",{class:"meta"},[
       el("div",{class:"t",text:b.title}),
@@ -1672,7 +1726,7 @@ function spineEl(b, i){
   var s = el("button",{class:"spine"+(state.selection[b.id]?" selected":""),
     style:"--g:"+bookColor(b)+";width:"+w+"px;height:"+h+"px;animation-delay:"+Math.min(i*18,420)+"ms",
     title:b.title + (b.author ? " — " + b.author : ""),
-    onclick:function(){ openDetail(b.id); }},[ label ]);
+    onclick:function(){ openDetail(b.id, s); }},[ label ]);
   return s;
 }
 
@@ -1917,27 +1971,162 @@ function colsPanel(months){
    9. Detail sheet
    ============================================================ */
 
+function reduceMotion(){
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/* The element the book flew out of, so it can fly back into it on close. */
+var flightOrigin = null;
+var closing = false;
+
 function closeModal(){
   var host = document.getElementById("modalHost");
-  clear(host);
-  document.body.style.overflow = "";
+  var scrim = host.firstChild;
+  var sheet = scrim && scrim.querySelector(".sheet");
+  var cover = sheet && sheet.querySelector(".dt-cover");
+
+  function finish(){
+    clear(host);
+    document.body.style.overflow = "";
+    if(flightOrigin){ flightOrigin.style.visibility = ""; flightOrigin = null; }
+    closing = false;
+  }
+
+  if(closing) return;
+
+  // send the book back to the shelf it came from
+  if(cover && flightOrigin && document.body.contains(flightOrigin) && !reduceMotion()){
+    closing = true;
+    var flew = flyCover(flightOrigin, cover, "out", 420, "cubic-bezier(.4,0,.2,1)", finish);
+    if(flew){
+      sheet.animate([{opacity:1},{opacity:0}], {duration:240, easing:"ease-in", fill:"forwards"});
+      scrim.animate([{opacity:1},{opacity:0}], {duration:400, easing:"ease-in", fill:"forwards"});
+      // the shelf slot fills back in just as the book lands
+      window.setTimeout(function(){
+        if(flightOrigin) flightOrigin.style.visibility = "";
+      }, 340);
+      return;
+    }
+    closing = false;
+  }
+  finish();
+}
+
+/* Where `target` would have to start to sit exactly on top of `origin`. */
+function flightDelta(origin, target){
+  var from = origin.getBoundingClientRect();
+  var to = target.getBoundingClientRect();
+  if(!from.width || !to.width) return null;
+  var sx = from.width / to.width;
+  var sy = from.height / to.height;
+  var dx = (from.left + from.width / 2) - (to.left + to.width / 2);
+  var dy = (from.top + from.height / 2) - (to.top + to.height / 2);
+  return { transform: "translate(" + dx + "px," + dy + "px) scale(" + sx + "," + sy + ")", to: to };
+}
+
+/* The sheet scrolls, so a cover travelling in from the grid would be clipped
+   by it. Fly a fixed-position copy over the whole page instead, and swap it
+   for the real one once it lands. */
+function flyCover(origin, target, dir, ms, easing, done){
+  var d = flightDelta(origin, target);
+  if(!d){ if(done) done(); return false; }
+
+  var clone = target.cloneNode(true);
+  clone.setAttribute("aria-hidden", "true");
+  clone.style.cssText += ";position:fixed;margin:0;pointer-events:none;z-index:150;" +
+    "left:" + d.to.left + "px;top:" + d.to.top + "px;" +
+    "width:" + d.to.width + "px;height:" + d.to.height + "px;";
+  document.body.appendChild(clone);
+  target.style.opacity = "0";
+
+  var frames = dir === "in"
+    ? [{ transform: d.transform }, { transform: "none" }]
+    : [{ transform: "none" }, { transform: d.transform }];
+
+  var anim = clone.animate(frames, { duration: ms, easing: easing, fill: "forwards" });
+  anim.addEventListener("finish", function(){
+    if(clone.parentNode) clone.parentNode.removeChild(clone);
+    target.style.opacity = "";
+    if(done) done();
+  });
+  return true;
 }
 
 function openModal(node, opts){
+  opts = opts || {};
   var host = document.getElementById("modalHost");
   clear(host);
+  closing = false;
+
   var scrim = el("div",{class:"scrim",onclick:function(e){ if(e.target === scrim) closeModal(); }});
-  var sheet = el("div",{class:"sheet"+((opts&&opts.narrow)?" narrow":""),role:"dialog","aria-modal":"true"});
+  var sheet = el("div",{class:"sheet"+(opts.narrow?" narrow":""),role:"dialog","aria-modal":"true"});
   sheet.appendChild(el("button",{class:"sheet-x",text:"×","aria-label":"Close",onclick:closeModal}));
   sheet.appendChild(node);
   scrim.appendChild(sheet);
   host.appendChild(scrim);
   document.body.style.overflow = "hidden";
+
+  var cover = sheet.querySelector(".dt-cover");
+  var origin = opts.origin;
+
+  if(opts.instant){
+    sheet.classList.add("sheet-static");
+  } else if(cover && origin && document.body.contains(origin) && !reduceMotion()){
+    sheet.classList.add("sheet-flight");
+    // the book leaves the shelf, so the slot it came from goes empty
+    origin.style.visibility = "hidden";
+    flightOrigin = origin;
+
+    var flew = flyCover(origin, cover, "in", 560, "cubic-bezier(.22,1,.3,1)");
+    if(flew){
+      // the panel arrives a beat later, so the book leads the movement
+      scrim.animate([{opacity:0},{opacity:1}], {duration:280, easing:"ease-out"});
+      var panel = sheet.querySelector(".dt-panel");
+      if(panel){
+        panel.animate(
+          [{opacity:0, transform:"translateY(16px)"}, {opacity:1, transform:"none"}],
+          {duration:480, delay:120, easing:"cubic-bezier(.16,1,.3,1)", fill:"backwards"});
+      }
+      var tail = sheet.querySelector(".dt-sec");
+      if(tail){
+        tail.animate(
+          [{opacity:0, transform:"translateY(18px)"}, {opacity:1, transform:"none"}],
+          {duration:480, delay:220, easing:"cubic-bezier(.16,1,.3,1)", fill:"backwards"});
+      }
+      staggerIn(sheet);
+    } else {
+      sheet.classList.remove("sheet-flight");
+      sheet.classList.add("sheet-in");
+      origin.style.visibility = "";
+      flightOrigin = null;
+    }
+  } else {
+    sheet.classList.add("sheet-in");
+  }
+
   var f = sheet.querySelector("input,select,textarea,button:not(.sheet-x)");
-  if(f && opts && opts.focus) f.focus();
+  if(f && opts.focus) f.focus();
 }
 
-function openDetail(id){
+/* Details settle in one after another rather than all at once. */
+function staggerIn(sheet){
+  var items = sheet.querySelectorAll("[data-stagger]");
+  Array.prototype.forEach.call(items, function(n, i){
+    n.animate([{opacity:0, transform:"translateY(10px)"}, {opacity:1, transform:"none"}],
+      {duration:420, delay:200 + i * 55, easing:"cubic-bezier(.16,1,.3,1)", fill:"backwards"});
+  });
+}
+
+function isFlagged(b){ return (b.tags || []).indexOf("verify") >= 0; }
+
+function clearFlag(b){
+  b.tags = (b.tags || []).filter(function(t){ return t !== "verify"; });
+  saveBook(b);
+}
+
+function reopen(id){ openDetail(id, null, true); }
+
+function openDetail(id, origin, instant){
   var b = state.books.find(function(x){ return x.id===id; });
   if(!b) return;
   var col = bookColor(b);
@@ -1954,7 +2143,7 @@ function openDetail(id){
         b.rating = (b.rating === n) ? 0 : n;
         saveBook(b);
         btn.classList.add("pop");
-        openDetail(id);
+        reopen(id);
       }});
     rate.appendChild(btn);
   })(i); }
@@ -1969,7 +2158,7 @@ function openDetail(id){
       if(prev !== "read"){ celebrate(); toast("“" + b.title + "” marked as read."); }
     }
     saveBook(b);
-    openDetail(id);
+    reopen(id);
   }});
   STATUSES.forEach(function(s){
     statusSel.appendChild(el("option",{value:s.id,text:s.name,selected:b.status===s.id?true:null}));
@@ -1977,7 +2166,7 @@ function openDetail(id){
 
   var favBtn = el("button",{class:"btn btn-sm",style:b.favorite?"color:var(--gold);border-color:var(--gold)":"",
     text:(b.favorite?"♥ Favourite":"♡ Favourite"),onclick:function(){
-      b.favorite = !b.favorite; saveBook(b); openDetail(id);
+      b.favorite = !b.favorite; saveBook(b); reopen(id);
     }});
 
   /* progress */
@@ -1994,14 +2183,14 @@ function openDetail(id){
       if(b.currentPage >= b.pages && b.status !== "read"){
         b.status = "read"; b.dateFinished = b.dateFinished || todayISO(); celebrate();
       } else if(b.currentPage > 0 && b.status === "toread"){ b.status = "reading"; }
-      saveBook(b); openDetail(id);
+      saveBook(b); reopen(id);
     });
     progWrap.appendChild(rng); progWrap.appendChild(pv);
   } else {
     progWrap.appendChild(el("span",{class:"hint",text:"Add a page count to track progress."}));
   }
 
-  var facts = el("div",{class:"dt-facts"});
+  var facts = el("div",{class:"dt-facts","data-stagger":true});
   [["Genre",(GMAP[b.genre]||{}).name],
    ["Format",b.format],
    ["Pages",b.pages||""],
@@ -2021,21 +2210,40 @@ function openDetail(id){
     ]));
   });
 
-  var tagRow = el("div",{class:"dt-row"});
-  (b.tags||[]).forEach(function(t){
+  var tagRow = el("div",{class:"dt-row","data-stagger":true});
+  // "verify" is spoken for by the callout above; don't repeat it as a chip
+  (b.tags||[]).filter(function(t){ return t !== "verify"; }).forEach(function(t){
     tagRow.appendChild(el("button",{class:"chip",text:t,onclick:function(){
       closeModal(); state.filters.tag = [t]; render();
     }}));
   });
 
+  /* Titles I read off a blurry spine say so, and can be settled in one click. */
+  var flagNote = null;
+  if(isFlagged(b)){
+    flagNote = el("div",{class:"flagnote","data-stagger":true},[
+      el("div",{class:"flagnote-t"},[
+        el("span",{class:"flagnote-dot"}),
+        el("span",{text:"Read off a blurry spine — worth checking against the book."})
+      ]),
+      el("div",{class:"flagnote-a"},[
+        el("button",{class:"btn btn-sm",text:"This is right",onclick:function(){
+          clearFlag(b); reopen(id); toast("Confirmed — no longer flagged.");
+        }}),
+        el("button",{class:"btn btn-sm",text:"Fix the details",onclick:function(){ openForm(b.id); }})
+      ])
+    ]);
+  }
+
   var body = el("div",{},[
     el("div",{class:"dt-top"},[
       el("div",{},[ cover ]),
-      el("div",{},[
-        el("h2",{class:"dt-h",text:b.title}),
-        el("p",{class:"dt-au",html: b.author ? "by <b>" + esc(b.author) + "</b>" + (b.series ? " · " + esc(b.series) + (b.seriesNo ? " #" + esc(b.seriesNo) : "") : "") : "Author unknown"}),
-        el("div",{class:"dt-row"},[ rate, statusSel, favBtn ]),
-        progWrap,
+      el("div",{class:"dt-panel"},[
+        flagNote,
+        el("h2",{class:"dt-h","data-stagger":true,text:b.title}),
+        el("p",{class:"dt-au","data-stagger":true,html: b.author ? "by <b>" + esc(b.author) + "</b>" + (b.series ? " · " + esc(b.series) + (b.seriesNo ? " #" + esc(b.seriesNo) : "") : "") : "Author unknown"}),
+        el("div",{class:"dt-row","data-stagger":true},[ rate, statusSel, favBtn ]),
+        el("div",{"data-stagger":true},[ progWrap ]),
         el("div",{style:"height:14px"}),
         facts,
         tagRow
@@ -2056,7 +2264,7 @@ function openDetail(id){
             b.lentTo = who.trim();
             toast("Lent to " + b.lentTo + ".");
           }
-          saveBook(b); openDetail(id);
+          saveBook(b); reopen(id);
         }}),
         el("button",{class:"btn",text:"Duplicate",onclick:function(){
           var copy = normalize(Object.assign({}, b, {id:uid(), dateAdded:todayISO()}));
@@ -2070,7 +2278,7 @@ function openDetail(id){
     ])
   ]);
 
-  openModal(body);
+  openModal(body, {origin: origin, instant: instant});
 }
 
 function deleteWithUndo(b){
@@ -2532,6 +2740,19 @@ function toggleTheme(){
   try{ localStorage.setItem("spineindex.theme", next); }catch(e){}
 }
 
+/* The rail is always there on a wide screen and a drawer on a narrow one.
+   A hidden rail stops being a grid item, so the layout drops to one column
+   with it — otherwise the books would sit in the rail's narrow track. */
+function syncRail(){
+  var rail = document.getElementById("rail");
+  var layout = document.querySelector(".layout");
+  if(!rail || !layout) return;
+  var narrow = window.matchMedia("(max-width:980px)").matches;
+  var show = narrow ? state.railOpen : true;
+  rail.hidden = !show;
+  layout.classList.toggle("no-rail", !show);
+}
+
 function syncTabs(){
   ["shelf","stacks","table","insights"].forEach(function(v){
     var btn = document.getElementById("v-"+v);
@@ -2566,20 +2787,17 @@ function wire(){
   document.getElementById("moreBtn").addEventListener("click", openTools);
   document.getElementById("themeBtn").addEventListener("click", toggleTheme);
   document.getElementById("railBtn").addEventListener("click", function(){
-    var r = document.getElementById("rail");
-    r.hidden = !r.hidden;
+    state.railOpen = !state.railOpen;
+    syncRail();
   });
-
-  if(window.matchMedia("(max-width:980px)").matches){
-    document.getElementById("rail").hidden = true;
-  }
+  syncRail();
 
   // shelves are packed to the container width, so repack when it changes
   var rt;
   window.addEventListener("resize", function(){
-    if(state.view !== "stacks") return;
+    syncRail();
     clearTimeout(rt);
-    rt = setTimeout(renderStage, 160);
+    rt = setTimeout(function(){ if(state.view === "stacks") renderStage(); }, 160);
   });
 
   document.addEventListener("keydown", function(e){

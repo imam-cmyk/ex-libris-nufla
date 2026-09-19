@@ -14,6 +14,8 @@ An *ex libris* is the bookplate a reader pastes inside a front cover: *from the 
 - **Reading** — progress slider that promotes a book to Reading and then to Read, a yearly reading goal, a lending tracker, a "surprise me" picker.
 - **Housekeeping** — bulk select with bulk status/tag/delete, duplicate finder, CSV import, CSV and JSON export, undo on delete.
 - **The bookplate** — greets her by name and by time of day; the dedication under her name is editable (click it).
+- **Opening a book** — the cover lifts off the shelf and flies into place, the panel arrives behind it and the details settle in one after another; closing sends it back to the slot it came from. Works from the cover grid and from a spine, where a narrow spine widening into a jacket reads as the book turning to face you.
+- **Needs checking** — titles read off a blurry spine are marked, collected under one sidebar shortcut, and can be confirmed or corrected in a click.
 - Light and dark themes, keyboard shortcuts (`/`, `n`, `r`, `1`–`4`, `t`), and `prefers-reduced-motion` respected.
 
 ## Where the data lives
@@ -44,6 +46,7 @@ sh build.sh src/page.html   # wraps src/page.html in the document head and write
 
 - The catalogue is the `SEED` array in the script: one row per book, columns `[title, author, genre, shelf, series, seriesNo, tags, language, cover, color, year, pages]`. `cover` is a filename stem in `covers/`; `color` is the spine hex, and an empty one falls back to the genre colour. Genre ids are `crime`, `romance`, `fantasy`, `mystery`, `sinhala`, `children`, `ya`, `nonfic`, `other`.
 - The name on the plate is `OWNER`, and the default dedication is `DEFAULT_DED`, both near the top of the render section.
+- A saved library lives in each visitor's `localStorage` and will not pick up new `SEED` facts by itself. **Bump `SEED_VERSION` whenever `SEED` gains fields**: `migrateSeed()` then fills only empty fields on books whose id and title still match. Corrections to facts that were previously *wrong* go in the `FIXES` table as `[id, field, oldValue, newValue]` — `applyFixes()` writes them only where the saved value is still the old one, so nothing she has edited herself is overwritten.
 - Genre colours are the `--c1`–`--c9` tokens, defined for light and dark and checked for colour-blind separation.
 
 ## Deploying
