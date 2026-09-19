@@ -918,6 +918,10 @@ var FIELDS = ["title","author","series","seriesNo","genre","tags","status","rati
 
 var COVER_DIR = "covers/";
 
+/* Bump whenever SEED gains facts an already-saved library should inherit.
+   1 = first catalogue · 2 = jackets, spine colours, years, page counts */
+var SEED_VERSION = 2;
+
 /* ============================================================
    2. State
    ============================================================ */
@@ -981,10 +985,32 @@ function removeBook(id){
   render();
 }
 
+function savePrefs(){
+  lsSet(LS_PREFS, {goal: state.goal, seedVersion: SEED_VERSION});
+}
+
 function saveGoal(n){
   state.goal = n;
-  lsSet(LS_PREFS, {goal:n});
+  savePrefs();
   render();
+}
+
+/* When the published catalogue gains facts a browser's saved copy predates
+   — jackets, spine colours, years, page counts — fold them in without
+   touching anything she has changed herself. */
+function migrateSeed(books){
+  var byId = {};
+  books.forEach(function(b){ byId[b.id] = b; });
+  var touched = 0;
+  SEED.forEach(function(r, i){
+    var b = byId["b" + (i + 1)];
+    if(!b || b.title !== r[0]) return;      // renamed or replaced — leave it alone
+    if(!b.cover && r[8]){ b.cover = r[8]; touched++; }
+    if(!b.color && r[9]){ b.color = r[9]; touched++; }
+    if(!b.year  && r[10]){ b.year  = r[10]; touched++; }
+    if(!b.pages && r[11]){ b.pages = r[11]; touched++; }
+  });
+  return touched;
 }
 
 function seedBooks(){
@@ -1014,14 +1040,18 @@ function resetToOriginal(){
 function bootStorage(){
   var prefs = lsGet(LS_PREFS, null);
   if(prefs && prefs.goal) state.goal = prefs.goal;
+  var savedVersion = (prefs && prefs.seedVersion) || 1;
 
   var saved = lsGet(LS_BOOKS, null);
   if(saved && saved.length){
     state.books = saved.map(normalize);
+    if(savedVersion < SEED_VERSION && migrateSeed(state.books)) persistLocal();
   } else {
     state.books = seedBooks();
     persistLocal();
   }
+  if(savedVersion !== SEED_VERSION) savePrefs();
+
   state.loaded = true;
   render();
 }
