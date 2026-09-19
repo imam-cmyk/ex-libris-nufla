@@ -24,11 +24,25 @@ To move a library between machines: **Library tools → Export CSV**, then **Imp
 
 No accounts, no server, no network calls except the Google Fonts stylesheet.
 
+## Covers
+
+79 of the 117 books have their real jacket in `covers/`, matched on Open Library by title *and* author (a wrong cover being worse than none), resized to 400px wide and committed to the repo so the site stays self-contained — no hotlinking, nothing to go stale.
+
+Each of those books also takes its **spine colour from its own jacket**: the artwork is reduced to 8×8, the most frequent chromatic bucket wins, and that colour is nudged into a lightness band where white spine lettering stays readable. So the Spines view is close to the real shelf.
+
+The remaining 38 — every Sinhala title, the unreadable spines, and a dozen Nancy Drew and Blyton editions Open Library could not confirm — fall back to a drawn cover in their genre colour. The page always builds the drawn cover first and fades a real jacket in over it, so a missing or slow image is never an empty rectangle.
+
+Cover matching also filled in real publication years and page counts, which is what gives the Spines view its varying widths.
+
 ## Editing
 
-`index.html` is the whole site — markup, styles and script in one file. Open it in a browser to work on it; there is no build step.
+`src/page.html` is the source: markup, styles and script in one file. `index.html` is generated from it.
 
-- The catalogue is the `SEED` array in the script: one row per book, columns `[title, author, genre, shelf, series, seriesNo, tags, language]`. Genre ids are `crime`, `romance`, `fantasy`, `mystery`, `sinhala`, `children`, `ya`, `nonfic`, `other`.
+```sh
+sh build.sh src/page.html   # wraps src/page.html in the document head and writes index.html
+```
+
+- The catalogue is the `SEED` array in the script: one row per book, columns `[title, author, genre, shelf, series, seriesNo, tags, language, cover, color, year, pages]`. `cover` is a filename stem in `covers/`; `color` is the spine hex, and an empty one falls back to the genre colour. Genre ids are `crime`, `romance`, `fantasy`, `mystery`, `sinhala`, `children`, `ya`, `nonfic`, `other`.
 - The name on the plate is `OWNER`, and the default dedication is `DEFAULT_DED`, both near the top of the render section.
 - Genre colours are the `--c1`–`--c9` tokens, defined for light and dark and checked for colour-blind separation.
 
